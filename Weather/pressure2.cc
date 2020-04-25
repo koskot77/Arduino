@@ -181,7 +181,7 @@ const char* render_point(const void *y){
   *pos++ = nums[x.second/10];
   *pos++ = nums[x.second%10];
   ++pos;
-  unsigned long pressure = x.pres + 0xFFFF;
+  unsigned long pressure = (unsigned long)x.pres + (unsigned long)0xFFFF;
   point[31] = nums[(pressure / 10000)%10];
   point[32] = nums[(pressure /  1000)%10];
   point[33] = nums[(pressure /   100)%10];
