@@ -93,12 +93,12 @@ typedef struct {
   unsigned hour : 5;
   unsigned minute:6;
   unsigned second:6;
-  unsigned int temp;
-  unsigned int pres;
+  unsigned int temp; // both, raw temperature and pressure have to be recorded to reconstruct final pressure value
+  unsigned int pres; 
 } Data; // here are 32 + 2*sizeof(int) bits in this structure
 
 Data *historical_data = NULL;
-size_t max_size = 100;
+size_t max_size = 128;
 
 void setup()
 {
@@ -151,52 +151,7 @@ void setup()
 }
 
 const char nums[10] = {'0','1','2','3','4','5','6','7','8','9'};
-/*
-// The function below is introduced to spare some space otherwise taken by sprintf/stdlib
-// pos += sprintf(pos,"%02d:",clock.hour);
-// pos += sprintf(pos,"%02d:",clock.minute);
-// pos += sprintf(pos,"%d 20%d.%02d.%02d",clock.second,clock.year,clock.month,clock.dayOfMonth);
-void render_time_date(const DS1307& clock, char (&timeString)[16], char (&dateString)[16]){
-    // compose time and date
-    char *tPos = timeString, *dPos = dateString;
 
-    *tPos++ = nums[clock.hour/10];
-    *tPos++ = nums[clock.hour%10];
-    *tPos++ = ':';
-    *tPos++ = nums[clock.minute/10];
-    *tPos++ = nums[clock.minute%10];
-    *tPos++ = ':';
-    *tPos++ = nums[clock.second/10];
-    *tPos++ = nums[clock.second%10];
-
-    *dPos++ = '2';
-    *dPos++ = '0';
-    *dPos++ = nums[clock.year/10];
-    *dPos++ = nums[clock.year%10];
-//    *dPos++ = '.';
-    *dPos++ = nums[clock.month/10];
-    *dPos++ = nums[clock.month%10];
-//    *dPos++ = '.';
-    *dPos++ = nums[clock.dayOfMonth/10];
-    *dPos++ = nums[clock.dayOfMonth%10];
-//    *dPos++ = '.';
-//    *dPos++ = 'p';
-//    *dPos++ = 'r';
-//    *dPos++ = 's';
-//    switch (clock.dayOfWeek){
-//      case MON: *pos++ = 'M'; *pos++ = 'O'; *pos++ = 'N'; break; //pos += sprintf(pos," MON"); 
-//      case TUE: *pos++ = 'T'; *pos++ = 'U'; *pos++ = 'E'; break; //pos += sprintf(pos," TUE"); 
-//      case WED: *pos++ = 'W'; *pos++ = 'E'; *pos++ = 'D'; break; //pos += sprintf(pos," WED"); 
-//      case THU: *pos++ = 'T'; *pos++ = 'H'; *pos++ = 'U'; break; //pos += sprintf(pos," THU"); 
-//      case FRI: *pos++ = 'F'; *pos++ = 'R'; *pos++ = 'I'; break; //pos += sprintf(pos," FRI"); 
-//      case SAT: *pos++ = 'S'; *pos++ = 'A'; *pos++ = 'T'; break; //pos += sprintf(pos," SAT"); 
-//      case SUN: *pos++ = 'S'; *pos++ = 'U'; *pos++ = 'N'; break; //pos += sprintf(pos," SUN"); 
-//      default: break;
-//   }
-   *tPos++ = '\0';
-   *dPos++ = '\0';
-}
-*/
 // buggy compiler
 //const char* render_point(const Data &x){
 const char* render_point(const void *y){
@@ -236,7 +191,6 @@ const char* render_point(const void *y){
   return point;
 }
 
-
 void loop()
 {
 //  wdt_reset();
@@ -270,35 +224,7 @@ void loop()
     sum_pres = 0;
     norm     = 0;
     // if logs are possible
-//    if( log_to_sd ){
-//      char timeString[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-//      char dateString[16] = {0,0,0,0,0,0,0,0,'.','p','r','s',0,0,0,0};
-//      render_time_date(clock, timeString, dateString);
-//
-//      // open the file. note that only one file can be open at a time,
-//      // so you have to close this one before opening another.
-//      File myFile = SD.open(dateString, FILE_WRITE);
-//      // if the file opened okay, write to it:
-//      if( myFile != NULL ){
-//        myFile.print(timeString);
-////        myFile.print(", temp: ");
-////        myFile.print(temperature);
-////        myFile.print(" C");
-//        myFile.print(", p= ");
-//        long  pressure = myBarometer.bmp085GetPressure(now.pres);        
-//        myFile.print(pressure);
-//        myFile.println(" Pa");
-////        myFile.print(", altitude: ");
-////        myFile.println(altitude);
-//////        myFile.println(" m");
-//     // close the file:
-//        myFile.close();
-//      } else {
-//        // if the file didn't open, print an error:
-//        Serial.print("error writing ");
-//        Serial.println(dateString);
-//      }
-//    }
+//    if( log_to_sd ) sd_write(myBarometer.bmp085GetPressure(now.pres));
   }
 
 
@@ -349,50 +275,11 @@ void loop()
               char ch = pgm_read_byte_near(chart_end + k);
               client.print(ch);
             }
-
-//            // list files
-//            if( log_to_sd ){
-//              File dir = SD.open("/");
-//              dir.rewindDirectory();
-//              while ( true ){
-//                File entry =  dir.openNextFile();
-//                if( entry ){
-//                  client.print("<a href=\"");
-//                  client.print(entry.name());
-//                  client.print("\">");
-//                  client.print(entry.name());
-//                  client.print("</a>");
-//                  if( entry.isDirectory() ) {
-//                    client.println("/");
-//                  } else {
-//                    // files have sizes, directories do not
-//                    client.print("\t\t");
-//                    client.println(entry.size(), DEC);
-//                  }
-//                  entry.close();
-//                } else {
-//                  break;
-//                }
-//              }
-//              dir.close();
-//            }
+            // list files
+//            if( log_to_sd ) sd_list(client);
 
           } else {
-//            // open the file for reading:
-//            File myFile;
-//            if( log_to_sd && (myFile = SD.open(path)) ){
-//              // read from the file until there's nothing else in it:
-//              while (myFile.available()) {
-//                client.write(myFile.read());
-//              }
-//              // close the file:
-//              myFile.close();
-//            } else {
-//              // if the file didn't open, print an error:
-//              client.println("HTTP/1.1 404 Resource not found");
-//              Serial.print("error opening ");
-//              Serial.println(path);
-//            }
+//            if( log_to_sd ) sd_read(client);
           }
 
           for(int k = 0; k < strlen_P(page_end); ++k) {
@@ -430,4 +317,127 @@ void loop()
   }
 
 }
+
+
+
+/*
+// The function below is introduced to spare some space otherwise taken by sprintf/stdlib
+// pos += sprintf(pos,"%02d:",clock.hour);
+// pos += sprintf(pos,"%02d:",clock.minute);
+// pos += sprintf(pos,"%d 20%d.%02d.%02d",clock.second,clock.year,clock.month,clock.dayOfMonth);
+void render_time_date(const DS1307& clock, char (&timeString)[16], char (&dateString)[16]){
+    // compose time and date
+    char *tPos = timeString, *dPos = dateString;
+
+    *tPos++ = nums[clock.hour/10];
+    *tPos++ = nums[clock.hour%10];
+    *tPos++ = ':';
+    *tPos++ = nums[clock.minute/10];
+    *tPos++ = nums[clock.minute%10];
+    *tPos++ = ':';
+    *tPos++ = nums[clock.second/10];
+    *tPos++ = nums[clock.second%10];
+
+    *dPos++ = '2';
+    *dPos++ = '0';
+    *dPos++ = nums[clock.year/10];
+    *dPos++ = nums[clock.year%10];
+//    *dPos++ = '.';
+    *dPos++ = nums[clock.month/10];
+    *dPos++ = nums[clock.month%10];
+//    *dPos++ = '.';
+    *dPos++ = nums[clock.dayOfMonth/10];
+    *dPos++ = nums[clock.dayOfMonth%10];
+//    *dPos++ = '.';
+//    *dPos++ = 'p';
+//    *dPos++ = 'r';
+//    *dPos++ = 's';
+//    switch (clock.dayOfWeek){
+//      case MON: *pos++ = 'M'; *pos++ = 'O'; *pos++ = 'N'; break; //pos += sprintf(pos," MON"); 
+//      case TUE: *pos++ = 'T'; *pos++ = 'U'; *pos++ = 'E'; break; //pos += sprintf(pos," TUE"); 
+//      case WED: *pos++ = 'W'; *pos++ = 'E'; *pos++ = 'D'; break; //pos += sprintf(pos," WED"); 
+//      case THU: *pos++ = 'T'; *pos++ = 'H'; *pos++ = 'U'; break; //pos += sprintf(pos," THU"); 
+//      case FRI: *pos++ = 'F'; *pos++ = 'R'; *pos++ = 'I'; break; //pos += sprintf(pos," FRI"); 
+//      case SAT: *pos++ = 'S'; *pos++ = 'A'; *pos++ = 'T'; break; //pos += sprintf(pos," SAT"); 
+//      case SUN: *pos++ = 'S'; *pos++ = 'U'; *pos++ = 'N'; break; //pos += sprintf(pos," SUN"); 
+//      default: break;
+//   }
+   *tPos++ = '\0';
+   *dPos++ = '\0';
+}
+
+void sd_write(long  pressure){
+      char timeString[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+      char dateString[16] = {0,0,0,0,0,0,0,0,'.','p','r','s',0,0,0,0};
+      render_time_date(clock, timeString, dateString);
+
+      // open the file. note that only one file can be open at a time,
+      // so you have to close this one before opening another.
+      File myFile = SD.open(dateString, FILE_WRITE);
+      // if the file opened okay, write to it:
+      if( myFile != NULL ){
+        myFile.print(timeString);
+//        myFile.print(", temp: ");
+//        myFile.print(temperature);
+//        myFile.print(" C");
+        myFile.print(", p= ");
+        myFile.print(pressure);
+        myFile.println(" Pa");
+//        myFile.print(", altitude: ");
+//        myFile.println(altitude);
+////        myFile.println(" m");
+     // close the file:
+        myFile.close();
+      } else {
+        // if the file didn't open, print an error:
+        Serial.print("error writing ");
+        Serial.println(dateString);
+      }
+}
+
+void sd_list(Stream &client){
+  File dir = SD.open("/");
+  dir.rewindDirectory();
+  while ( true ){
+    File entry =  dir.openNextFile();
+    if( entry ){
+      client.print("<a href=\"");
+      client.print(entry.name());
+      client.print("\">");
+      client.print(entry.name());
+      client.print("</a>");
+      if( entry.isDirectory() ) {
+        client.println("/");
+      } else {
+       // files have sizes, directories do not
+       client.print("\t\t");
+       client.println(entry.size(), DEC);
+      }
+      entry.close();
+    } else {
+      break;
+    }
+  }
+  dir.close();
+}
+
+void sd_read(Stream &client, const char *path){
+  // open the file for reading:
+  File myFile;
+  if( (myFile = SD.open(path)) ){
+    // read from the file until there's nothing else in it:
+    while (myFile.available()) {
+      client.write(myFile.read());
+    }
+    // close the file:
+    myFile.close();
+  } else {
+    // if the file didn't open, print an error:
+    client.println("HTTP/1.1 404 Resource not found");
+    Serial.print("error opening ");
+    Serial.println(path);
+  }
+}
+
+*/
 
