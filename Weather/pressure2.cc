@@ -82,9 +82,9 @@ const PROGMEM char chart_end[] = ""
 
 const PROGMEM char page_end[] = "</body></html>";
 
-bool log_to_sd = true;
+bool sd_ready = false;
 
-float sum_temp = 0, sum_pres = 0, norm = 0;
+float sum_pres = 0, count_pres = 0;
 
 typedef struct {
   unsigned year : 6;
@@ -93,12 +93,13 @@ typedef struct {
   unsigned hour : 5;
   unsigned minute:6;
   unsigned second:6;
-  unsigned int temp; // both, raw temperature and pressure have to be recorded to reconstruct final pressure value
-  unsigned int pres; 
-} Data; // here are 32 + 2*sizeof(int) bits in this structure
+//  unsigned int  raw_temp; // both, raw temperature
+//  unsigned long raw_pres; //   and raw pressure have to be recorded to reconstruct normal pressure value
+  unsigned int pres; // alternatively, save space storing normal pressure offset by 0xFFFF (as to fit it in 2 bytes) 
+} Data; // here are 32 + sizeof(unsigned int) = 48 bits in this structure
 
 Data *historical_data = NULL;
-size_t max_size = 128;
+size_t max_size = 144; // 1440 minutes in a day, let's keep a point for every 10 minutes
 
 void setup()
 {
@@ -114,12 +115,14 @@ void setup()
 
   if (!SD.begin(4)) {
     Serial.println(F(" initialization of CD card failed, application will not be logging historical data"));
-    log_to_sd = false;
+    sd_ready = false;
   } else {
     Serial.println(F(" initialization of CD card successful"));
+    sd_ready = true;
   }
   Serial.println("");
- */ // start the Ethernet connection and the server:
+*/
+  // start the Ethernet connection and the server:
   //  attempt a DHCP connection:
 
   Serial.print(F("DHCP:"));
@@ -178,10 +181,7 @@ const char* render_point(const void *y){
   *pos++ = nums[x.second/10];
   *pos++ = nums[x.second%10];
   ++pos;
-
-  float temperature = myBarometer.bmp085GetTemperature( x.temp );
-  long  pressure    = myBarometer.bmp085GetPressure   ( x.pres );
-//  float altitude = myBarometer.calcAltitude(pressure); //Uncompensated caculation - in Meters 
+  unsigned long pressure = x.pres + 0xFFFF;
   point[31] = nums[(pressure / 10000)%10];
   point[32] = nums[(pressure /  1000)%10];
   point[33] = nums[(pressure /   100)%10];
@@ -198,33 +198,34 @@ void loop()
   clock.getTime();
   if( timePrevAve<0 || abs(clock.second-timePrevAve)>=1 ){
     timePrevAve = clock.second;
-    sum_temp += myBarometer.bmp085ReadUT();
-    sum_pres += myBarometer.bmp085ReadUP();
-    norm     += 1;
+    unsigned int  raw_temp = myBarometer.bmp085ReadUT(); // let's hope temperature doesn't change too much over minute
+    unsigned long raw_pres = myBarometer.bmp085ReadUP();
+    myBarometer.bmp085GetTemperature(raw_temp); // Barometer's driver is not stateless (!), you have to make this call even you don't need to use its result
+    sum_pres += myBarometer.bmp085GetPressure(raw_pres);
+//  float altitude = myBarometer.calcAltitude(pressure); //Uncompensated caculation - in Meters, who needs this anyways?
+    count_pres += 1;
   }
 
-  // store results every 1 minute or so
-  if( timePrevStore<0 || abs(clock.minute-timePrevStore)>=1 ){
+  // store results every 10 minute or so
+  if( timePrevStore<0 || abs(clock.minute-timePrevStore)>=10 ){
     timePrevStore = clock.minute;
 
     memmove((void*)(historical_data+1), (void*)historical_data, (max_size-1)*sizeof(Data));
 
     Data &now = historical_data[0];
 
-    now.year  = clock.year;
-    now.month = clock.month;
-    now.day   = clock.dayOfMonth;
-    now.hour  = clock.hour;
-    now.minute= clock.minute;
-    now.second= clock.second;
-    now.temp  = int(sum_temp/norm);
-    now.pres  = int(sum_pres/norm);
+    now.year   = clock.year;
+    now.month  = clock.month;
+    now.day    = clock.dayOfMonth;
+    now.hour   = clock.hour;
+    now.minute = clock.minute;
+    now.second = clock.second;
+    now.pres   = (unsigned int)(sum_pres/count_pres - 0xFFFF);
 
-    sum_temp = 0;
-    sum_pres = 0;
-    norm     = 0;
+    sum_pres   = 0;
+    count_pres = 0;
     // if logs are possible
-//    if( log_to_sd ) sd_write(myBarometer.bmp085GetPressure(now.pres));
+//    if( sd_ready ) sd_write(now.pres);
   }
 
 
