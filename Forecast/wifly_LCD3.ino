@@ -7,8 +7,8 @@
 LiquidCrystal_I2C lcd(0x20,20,4);  // set the LCD address to 0x27 for a 20 chars and 4 line display
 uint8_t degChar[8]  = {0x4,0xa,0x4,0x0,0x0,0x0,0x0};
 
-#define SSID      "UPC1344544"
-#define KEY       "C3w7ysjkmRxt"
+#define SSID      ""
+#define KEY       ""
 #define AUTH      WIFLY_AUTH_WPA2_PSK
 
 #define BKL_PIN   12
